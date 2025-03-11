@@ -19,7 +19,9 @@ const findImports = (filePath) => {
   // Execute the regex to find all imports
   while ((match = importRegex.exec(content)) !== null) {
     const dependency = match[1] || match[2]; // Match either import or require
-    imports.push(dependency);
+    // Remove the file extension if present (e.g., index.js, .js)
+    const cleanDependency = dependency.replace(/\/index\.js$/, '').replace(/\.js$/, '');
+    imports.push(cleanDependency);
   }
 
   return imports;
@@ -76,4 +78,5 @@ const checkUnusedDependencies = () => {
   }
 };
 
+// Run the tool
 checkUnusedDependencies();
