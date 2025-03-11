@@ -7,7 +7,7 @@ const getDependencies = (packageJsonPath) => {
   return Object.keys(packageJson.dependencies || {});
 };
 
-// Function to scan a single JS file for import/require statements
+// Function to scan JS files for import/require statements
 const findImports = (filePath) => {
   const content = fs.readFileSync(filePath, 'utf-8');
   const imports = [];
@@ -27,8 +27,28 @@ const findImports = (filePath) => {
   return imports;
 };
 
-// Main function to check for unused dependencies in a single file
-const checkUnusedDependencies = (filePath) => {
+// Function to scan project files for imports
+const scanProjectFiles = (projectDir) => {
+  const jsFiles = [];
+  const scanDir = (dir) => {
+    const files = fs.readdirSync(dir);
+    files.forEach(file => {
+      const fullPath = path.join(dir, file);
+      if (fs.statSync(fullPath).isDirectory()) {
+        scanDir(fullPath); // Recurse into subdirectories
+      } else if (fullPath.endsWith('.js')) {
+        jsFiles.push(fullPath); // Collect JS files
+      }
+    });
+  };
+
+  scanDir(projectDir);
+
+  return jsFiles;
+};
+
+// Main function to check for unused dependencies
+const checkUnusedDependencies = () => {
   const packageJsonPath = path.resolve(__dirname, 'package.json'); // Direct path to package.json
   if (!fs.existsSync(packageJsonPath)) {
     console.log('No package.json found in the project.');
@@ -36,10 +56,16 @@ const checkUnusedDependencies = (filePath) => {
   }
 
   const dependencies = getDependencies(packageJsonPath);
+  const projectDir = path.dirname(packageJsonPath);
 
-  // Get the imports used in the specified file
-  const imports = findImports(filePath);
-  const usedDependencies = new Set(imports);
+  // Scan project files for imported modules
+  const jsFiles = scanProjectFiles(projectDir);
+  let usedDependencies = new Set();
+
+  jsFiles.forEach(file => {
+    const imports = findImports(file);
+    imports.forEach(dep => usedDependencies.add(dep));
+  });
 
   // Compare dependencies and log unused ones
   const unusedDependencies = dependencies.filter(dep => !usedDependencies.has(dep));
@@ -52,6 +78,5 @@ const checkUnusedDependencies = (filePath) => {
   }
 };
 
-// Example usage: Call the function with the path to the specific file you want to check
-const filePath = path.resolve(__dirname, 'src/index.js'); // Adjust this path to the file you want to check
-checkUnusedDependencies(filePath);
+// Run the tool
+checkUnusedDependencies();
